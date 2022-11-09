@@ -1,0 +1,37 @@
+#!/usr/bin/bash
+
+function gotod() {
+	GOTOD_DIR="$HOME/.local/state/gotod"
+	HELP_DIR="."
+	
+	RE_PATTERN_ADD='-a \w+'
+	RE_PATTERN_REM='-r \w+'
+	RE_PATTERN_LIST='-l'
+
+	if [ ! -d $GOTOD_DIR ] ; then
+		mkdir -p $GOTOD_DIR
+	fi
+
+	if [[ "$*" =~ $RE_PATTERN_ADD ]] ; then
+		if [[ -d "$2" || -f "$2" ]] ; then
+			ln -s "$(pwd)/$2" "$GOTOD_DIR/$2"
+			source "$HOME/Documents/Bash/gotod-completion.bash"
+			echo "done"
+		else
+			echo "failed"
+		fi
+	elif [[ "$*" =~ $RE_PATTERN_REM ]] ; then
+		# not safe at all
+		if [[ -h "$GOTOD_DIR/$2-link" ]] ; then
+			rm "$GOTOD_DIR/$2"
+			source "$HOME/Documents/Bash/gotod-completion.bash"
+			echo "done"
+		else
+			echo "failed"
+		fi
+	elif [[ "$*" =~ $RE_PATTERN_LIST ]] ; then
+		\ls "$GOTOD_DIR"
+	else
+		cd -P "$GOTOD_DIR/$1"
+	fi
+}
