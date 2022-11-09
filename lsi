@@ -1,0 +1,16 @@
+#!/usr/bin/bash
+
+FILE_FORMATS="(tex|pdf)"
+MATCH_TYPE=""
+
+if [[ -f "./.lsignore" ]] ; then
+	MATCH_TYPE=$(awk '/^blacklist$/ { print "!" }' .lsignore)
+	FILE_FORMATS=$(awk 'BEGIN { file_formats="(" } \
+		            $0 !~ /^(whitelist|blacklist)$/ { file_formats=file_formats $0 "|" } \
+			    END { file_formats=substr(file_formats, 0, length(file_formats) - 1) ")"; \
+			    print file_formats }' .lsignore)
+fi
+
+AWK_PROGRAM="\$0 $MATCH_TYPE~ /^.*\\.$FILE_FORMATS$/ {print}"
+
+ls --color=never -l -h | awk -- "$AWK_PROGRAM"
