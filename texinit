@@ -1,0 +1,114 @@
+#!/usr/bin/bash
+
+# file path (the first argument)
+# -s n show template n
+# -t n use  template n (dafaults to 1)
+# -n no ask
+#
+
+
+# TODO: fix -d, it needs to add the date specification, not just instantiate it
+# TODO: split the initialization maybe in more phases (packages, config, body-template)
+
+TEMPLATE_DIR="$HOME/.local/share/texinit"
+
+TEMPLATE=""
+TO="out.tex"
+
+ASK_OWRT=true
+FIRST_ONE=true
+CONST_DEFINITIONS=""
+
+if [ ! -d $TEMPLATE_DIR ] ; then
+    echo "creating $TEMPLATE_DIR ..."
+    mkdir -p $TEMPLATE_DIR
+fi
+
+function init_file() {
+	if $ASK_OWRT && [ -f $TO ] ; then
+	    while true; do
+	        read -p "This would overwrite a file, proceed? [y/N]" yn
+	        case $yn in
+		[Yy]* )
+			break
+			;;
+		[Nn]* )
+		 	echo "Operation aborted"
+		 	exit 1
+		 	;;
+		*) 
+			echo "Invalid answer"
+	        esac
+	    done	 
+	fi
+
+	if [ -n "$TEMPLATE" ] ; then
+	    cp "$TEMPLATE" "$TO"
+	else
+	    echo "\documentclass[12pt]{article}" > $TO
+	    echo "\begin{document}" >> $TO
+	    echo "" >> $TO
+	    echo "\end{document}" >> $TO
+	fi
+
+	if [[ ! -z $CONST_DEFINITIONS ]] ; then
+		# -E stops at preprocessing
+		# -xc does ???
+		# -P does not put anything at the start of the text
+		# manage spaces in macros
+		if [[ ! -f ".$TOtemp" ]] ; then
+			gcc -xc -P -E $CONST_DEFINITIONS $TO -o "."$TO"temp"
+			cat "."$TO"temp" > "$TO"
+			rm "."$TO"temp"
+		else
+			echo "Tried to create the file \\\`$TOtemp' but it already exists"
+		fi
+	fi
+}
+
+function first_argument() {
+	if [[ "$1" =~ ^.+\.tex$ ]] ; then
+		TO="$1"
+	elif [[ "$1" =~ ^[^-].*$ ]] ; then
+		TO="$1".tex
+	elif [[ "$1" =~ ^--show=([[:digit:]]+)$ || "$1" =~ ^-s=([[:digit:]]+)$ ]] ; then
+		if [[ -a "$TEMPLATE_DIR/template${BASH_REMATCH[1]}" ]] ; then
+			cat "$TEMPLATE_DIR/template${BASH_REMATCH[1]}"
+			exit 0
+		else
+			echo "Template not found in $TEMPLATE_DIR"
+			exit 1
+		fi
+	elif [[ "$1" =~ ^(--help|-h)$ ]] ; then
+		echo "Not yet implemented"
+		exit 0
+	else
+		echo "File not provided or not accessible, defaulting to out.tex"
+	fi
+}
+
+first_argument $1
+
+for arg in ${@:2}
+do
+	if   [[ "$arg" =~ ^--template=([[:digit:]]+)$ || "$arg" =~ ^-t=([[:digit:]]+)$ ]] ; then
+		if [[ -a "$TEMPLATE_DIR/template${BASH_REMATCH[1]}" ]] ; then
+			TEMPLATE="$TEMPLATE_DIR/template${BASH_REMATCH[1]}"
+		else
+			echo "Template not found, usign default template"
+		fi
+	elif [[ "$arg" =~ ^-m([[:alnum:]_]+)=(.+)$ ]] ; then
+		CONST_DEFINITIONS=$CONST_DEFINITIONS"-D${BASH_REMATCH[1]}=${BASH_REMATCH[2]} "
+	elif [[ "$arg" =~ ^(--no-ask|-n)$ ]] ; then
+		ASK_OWRT=false
+	elif [[ "$arg" =~ ^-d$ ]] ; then
+		DATE=($(date +"%d %m %Y"))
+		CONST_DEFINITIONS=$CONST_DEFINITIONS"-Ddd=${DATE[0]} -Dmm=${DATE[1]} -Dyyyy=${DATE[2]} "
+		unset IFS
+	else
+		echo "Invalid command $arg"
+		exit 1
+	fi
+done    
+
+init_file $TO 
